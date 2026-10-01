@@ -1,0 +1,11 @@
+Thorium Minestom library
+Copyright 2026 Thorium Anti-Cheat Solutions LLC
+
+The source code in this repository is licensed under the Apache License 2.0
+(see LICENSE).
+
+The release jar bundles these libraries under their own licenses. Their texts
+are in licenses/ here and in META-INF/licenses/ inside the jar.
+
+  Java-WebSocket        Nathan Rajlich   MIT
+  Protocol Buffers      Google           BSD-3-Clause
