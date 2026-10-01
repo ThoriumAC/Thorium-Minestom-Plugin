@@ -25,14 +25,14 @@ repositories {
 }
 
 dependencies {
-    implementation("net.minestom:minestom:2026.09.12-26.2")
-    implementation("ac.thorium:thorium-minestom:1.0.0-26.2")
+    implementation("net.minestom:minestom:2026.05.17-1.21.11")
+    implementation("ac.thorium:thorium-minestom:1.0.0-1.21.11")
 }
 ```
 
 The jar is shaded (its websocket and protobuf are relocated), so it brings no dependencies of its own.
 
-To release, tag the commit on the branch being released (`git tag v1.0.0-26.2 && git push --tags`);
+To release, tag the commit on the branch being released (`git tag v1.0.0-1.21.11 && git push --tags`);
 `.github/workflows/publish.yml` builds, tests and publishes it.
 
 ## Use
