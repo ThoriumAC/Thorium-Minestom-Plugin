@@ -222,7 +222,8 @@ public final class WorldMirror {
     }
 
     public synchronized boolean hasWork() {
-        return enabled && (fullSyncPending || !outbox.isEmpty() || !deltas.isEmpty() || !dropped.isEmpty());
+        return enabled && (fullSyncPending || !outbox.isEmpty() || !deltas.isEmpty() || !dropped.isEmpty()
+                || (syncing && retargeted && pendingColumns.isEmpty()));
     }
 
     public synchronized List<UpStream> drain(long nowMs, long tick, int maxBytes) {
