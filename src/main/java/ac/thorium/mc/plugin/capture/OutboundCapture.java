@@ -105,7 +105,7 @@ public final class OutboundCapture {
                 EntitySpawn.Builder b = EntitySpawn.newBuilder().setId(w.entityId()).setType(et.key().asString())
                         .setPosition(vec(pos)).setYaw(w.position().yaw()).setPitch(w.position().pitch()).setHeadYaw(w.headRot())
                         .setUuid(Names.bytes(w.uuid())).setVelocity(vec(w.velocity()));
-                boolean wanted = EntityTracker.wanted(key, et.shouldSendAttributes() || key.endsWith("minecart"));
+                boolean wanted = EntityTracker.wanted(key, !et.defaultAttributes().isEmpty() || key.endsWith("minecart"));
                 entities.spawn(viewer, w.entityId(), b.getType(), wanted, pos.x(), pos.y(), pos.z(), w.position().yaw(), w.position().pitch());
                 fenced(p, Outbound.newBuilder().setEntitySpawn(b));
             }
@@ -177,8 +177,8 @@ public final class OutboundCapture {
                     .setFlySpeed(w.flyingSpeed()).setWalkSpeed(w.walkingSpeed())));
             case ChangeGameStatePacket w -> fenced(p, Outbound.newBuilder().setGameState(GameState.newBuilder().setReason(w.reason().ordinal()).setValue(w.value())));
             case RespawnPacket w -> fenced(p, Outbound.newBuilder().setRespawn(RespawnOut.newBuilder()
-                    .setDimension(dimensionName(w.playerSpawnInfo().dimensionType()))
-                    .setGamemode(w.playerSpawnInfo().gameMode().ordinal()).setKeepAll((w.copyData() & 0x03) == 0x03)));
+                    .setDimension(dimensionName(w.dimensionType()))
+                    .setGamemode(w.gameMode().ordinal()).setKeepAll((w.copyData() & 0x03) == 0x03)));
             case SetSlotPacket w -> fenced(p, Outbound.newBuilder().setSlot(ItemNames.slotOut(w.slot(), w.itemStack()).setWindow(w.windowId()).setStateId(w.stateId())));
             case SetPlayerInventorySlotPacket w -> fenced(p, Outbound.newBuilder().setSlot(ItemNames.slotOut(windowSlot(w.slot()), w.itemStack()).setWindow(0)));
             case WindowItemsPacket w -> {

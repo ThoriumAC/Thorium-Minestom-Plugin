@@ -10,7 +10,7 @@ group = "ac.thorium"
 version = "1.0.0"
 
 val protobufVersion = "4.36.1"
-val minestomVersion = "2026.09.12-26.2"
+val minestomVersion = "2026.05.17-1.21.11"
 
 repositories {
     mavenCentral()

@@ -72,10 +72,15 @@ public final class PacketCapture {
             case ClientKeepAlivePacket w -> telemetry.sample(p, SampleFactory.keepAlive(w.id()));
             case ClientUseItemPacket w -> telemetry.sample(p, SampleFactory.useItem(w.hand().ordinal(), w.sequence(), true, w.yaw(), w.pitch()));
             case ClientHeldItemChangePacket w -> telemetry.sample(p, SampleFactory.heldSlot(w.slot()));
-            case ClientAttackPacket w -> telemetry.sample(p, SampleFactory.combat(CombatInteract.COMBAT_INTERACT_ATTACK, w.targetId(), telemetry.refFor(w.targetId()),
-                    f.x, f.y, f.z, f.yaw, f.pitch, 0, 0, 0, 0, false, false));
-            case ClientInteractEntityPacket w -> telemetry.sample(p, SampleFactory.combat(CombatInteract.COMBAT_INTERACT_INTERACT_AT, w.targetId(), telemetry.refFor(w.targetId()),
-                    f.x, f.y, f.z, f.yaw, f.pitch, w.location().x(), w.location().y(), w.location().z(), w.hand().ordinal(), true, w.usingSecondaryAction()));
+            case ClientInteractEntityPacket w -> telemetry.sample(p, switch (w.type()) {
+                case ClientInteractEntityPacket.Attack a -> SampleFactory.combat(CombatInteract.COMBAT_INTERACT_ATTACK, w.targetId(), telemetry.refFor(w.targetId()),
+                        f.x, f.y, f.z, f.yaw, f.pitch, 0, 0, 0, 0, false, w.sneaking());
+                case ClientInteractEntityPacket.InteractAt a -> SampleFactory.combat(CombatInteract.COMBAT_INTERACT_INTERACT_AT, w.targetId(), telemetry.refFor(w.targetId()),
+                        f.x, f.y, f.z, f.yaw, f.pitch, a.targetX(), a.targetY(), a.targetZ(), a.hand().ordinal(), true, w.sneaking());
+                case ClientInteractEntityPacket.Interact a -> SampleFactory.combat(CombatInteract.COMBAT_INTERACT_INTERACT, w.targetId(), telemetry.refFor(w.targetId()),
+                        f.x, f.y, f.z, f.yaw, f.pitch, 0, 0, 0, a.hand().ordinal(), false, w.sneaking());
+                default -> SampleFactory.other(packetId(packet), packet.getClass().getSimpleName());
+            });
             case ClientAnimationPacket w -> telemetry.sample(p, SampleFactory.swing(w.hand().ordinal()));
             case ClientPlayerActionPacket w -> {
                 Point bp = w.blockPosition();
@@ -93,7 +98,7 @@ public final class PacketCapture {
             case ClientCreativeInventoryActionPacket w -> telemetry.sample(p, SampleFactory.inventory(0, w.slot(), 0, "CREATIVE_SET", 0, 0, 1, false));
             case ClientStatusPacket w -> telemetry.sample(p, SampleFactory.clientStatus(w.action().ordinal()));
             case ClientSettingsPacket w -> telemetry.sample(p, SampleFactory.settings(w.settings().viewDistance(), w.settings().mainHand().ordinal(), w.settings().displayedSkinParts()));
-            case ClientTeleportToEntityPacket w -> telemetry.sample(p, SampleFactory.spectate(w.target()));
+            case ClientSpectatePacket w -> telemetry.sample(p, SampleFactory.spectate(w.target()));
             case ClientChatMessagePacket w -> telemetry.sample(p, SampleFactory.text(TextKind.TEXT_KIND_CHAT, textLen(w.message()), 0, false));
             case ClientCommandChatPacket w -> telemetry.sample(p, SampleFactory.text(TextKind.TEXT_KIND_COMMAND, textLen(w.message()), 0, false));
             case ClientSignedCommandChatPacket w -> telemetry.sample(p, SampleFactory.text(TextKind.TEXT_KIND_COMMAND, textLen(w.message()), 0, true));

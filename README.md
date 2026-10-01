@@ -5,7 +5,7 @@ server already handles to the Thorium engine and applies the verdicts that come 
 transport, buffers, world mirror and wire format are shared with the Bukkit plugin; only the
 capture and enforcement layer is Minestom-specific.
 
-Targets Minestom `2026.09.12-26.2` (Minecraft 26.2), Java 25.
+Targets Minestom `2026.05.17-1.21.11` (Minecraft 1.21.11), Java 25. The `main` branch targets 26.2.
 
 ## Use
 
