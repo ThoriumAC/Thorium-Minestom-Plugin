@@ -4,13 +4,15 @@ plugins {
     `java-library`
     id("com.gradleup.shadow") version "9.6.1"
     id("com.google.protobuf") version "0.10.0"
+    `maven-publish`
 }
-
-group = "ac.thorium"
-version = "1.0.0"
 
 val protobufVersion = "4.36.1"
 val minestomVersion = "2026.09.12-26.2"
+
+group = "ac.thorium"
+// Suffixed with the Minecraft version, as Minestom's own versions are, so each branch publishes its own line.
+version = "1.0.0-" + minestomVersion.substringAfter('-')
 
 repositories {
     mavenCentral()
@@ -80,4 +82,21 @@ tasks.test {
     useJUnitPlatform()
     systemProperty("minestom.inside-test", "true")
     testLogging { events("failed"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
+}
+
+// The shaded jar is the artifact: websocket and protobuf are relocated inside it, so the POM
+// carries no dependencies. Minestom itself is the consumer's.
+publishing {
+    publications {
+        create<MavenPublication>("maven") { from(components["shadow"]) }
+    }
+    repositories {
+        maven("https://maven.pkg.github.com/${System.getenv("GITHUB_REPOSITORY")?.lowercase()}") {
+            name = "GitHubPackages"
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
 }
