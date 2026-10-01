@@ -40,6 +40,8 @@ public final class WorldSampler {
     static final int SECTIONS_ABOVE = 1;
     static final int SECTIONS_PER_COLUMN = SECTIONS_BELOW + SECTIONS_ABOVE + 1;
     public static final String AIR = "minecraft:air";
+    // Minestom 1.21.11 builds before 2026.05.17 guard chunks with their monitor instead of a read/write lock.
+    private static final boolean RW_CHUNK_LOCK = hasChunkReadLock();
 
     private final WorldMirror mirror;
     private final ErrorGate gate;
@@ -142,15 +144,34 @@ public final class WorldSampler {
         long t0 = System.nanoTime();
         List<Palette> copies = new ArrayList<>(want.size());
         String biome;
-        chunk.lockReadLock();
-        try {
-            for (SectionPos p : want) copies.add(chunk.getSectionAt(p.getY() << 4).blockPalette().clone());
-            biome = biomeByColumn.computeIfAbsent(columnKey, k -> chunk.getBiome(8, 64, 8).key().asString());
-        } finally {
-            chunk.unlockReadLock();
+        if (RW_CHUNK_LOCK) {
+            chunk.lockReadLock();
+            try {
+                biome = copy(chunk, want, copies, columnKey);
+            } finally {
+                chunk.unlockReadLock();
+            }
+        } else {
+            synchronized (chunk) {
+                biome = copy(chunk, want, copies, columnKey);
+            }
         }
         mirror.recordSnapshot(System.nanoTime() - t0);
         for (int i = 0; i < want.size(); i++) mirror.acceptSection(want.get(i), read(copies.get(i)), token, biome);
+    }
+
+    private String copy(Chunk chunk, List<SectionPos> want, List<Palette> copies, String columnKey) {
+        for (SectionPos p : want) copies.add(chunk.getSectionAt(p.getY() << 4).blockPalette().clone());
+        return biomeByColumn.computeIfAbsent(columnKey, k -> chunk.getBiome(8, 64, 8).key().asString());
+    }
+
+    private static boolean hasChunkReadLock() {
+        try {
+            Chunk.class.getMethod("lockReadLock");
+            return true;
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
     }
 
     public static SectionData read(Palette palette) {

@@ -105,7 +105,7 @@ public final class OutboundCapture {
                 EntitySpawn.Builder b = EntitySpawn.newBuilder().setId(w.entityId()).setType(et.key().asString())
                         .setPosition(vec(pos)).setYaw(w.position().yaw()).setPitch(w.position().pitch()).setHeadYaw(w.headRot())
                         .setUuid(Names.bytes(w.uuid())).setVelocity(vec(w.velocity()));
-                boolean wanted = EntityTracker.wanted(key, !et.defaultAttributes().isEmpty() || key.endsWith("minecart"));
+                boolean wanted = EntityTracker.wanted(key, et.registry().shouldSendAttributes() || key.endsWith("minecart"));
                 entities.spawn(viewer, w.entityId(), b.getType(), wanted, pos.x(), pos.y(), pos.z(), w.position().yaw(), w.position().pitch());
                 fenced(p, Outbound.newBuilder().setEntitySpawn(b));
             }
