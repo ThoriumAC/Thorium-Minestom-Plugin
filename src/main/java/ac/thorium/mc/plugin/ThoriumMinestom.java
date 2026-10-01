@@ -47,7 +47,7 @@ import java.util.logging.Logger;
 
 /** Thorium for Minestom. Call {@link #start(Path)} after {@code MinecraftServer.init()}. */
 public final class ThoriumMinestom {
-    public static final String VERSION = "1.0.0";
+    public static final String VERSION = "1.0.1";
 
     private final Path dataDir;
     private final Logger log = Logger.getLogger("Thorium");

@@ -12,7 +12,7 @@ val minestomVersion = "2026.05.17-1.21.11"
 
 group = "ac.thorium"
 // Suffixed with the Minecraft version, as Minestom's own versions are, so each branch publishes its own line.
-version = "1.0.0-" + minestomVersion.substringAfter('-')
+version = "1.0.1-" + minestomVersion.substringAfter('-')
 
 repositories {
     mavenCentral()
@@ -85,18 +85,9 @@ tasks.test {
 }
 
 // The shaded jar is the artifact: websocket and protobuf are relocated inside it, so the POM
-// carries no dependencies. Minestom itself is the consumer's.
+// carries no dependencies. Minestom itself is the consumer's. JitPack serves it from mavenLocal.
 publishing {
     publications {
         create<MavenPublication>("maven") { from(components["shadow"]) }
-    }
-    repositories {
-        maven("https://maven.pkg.github.com/${System.getenv("GITHUB_REPOSITORY")?.lowercase()}") {
-            name = "GitHubPackages"
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
-            }
-        }
     }
 }
