@@ -9,31 +9,26 @@ Targets Minestom `2026.09.12-26.2` (Minecraft 26.2), Java 25.
 
 ## Install
 
-Published to GitHub Packages. The version carries the Minecraft version it was built for
-(`1.0.0-26.2`, `1.0.0-1.21.11`); use the one matching your Minestom. GitHub Packages needs a
-token even for public packages: a personal access token with `read:packages`.
+Served by [JitPack](https://jitpack.io/#ThoriumAC/Thorium-Minestom-Plugin); no login needed. The
+version is the git tag, which carries the Minecraft version it was built for (`1.0.1-26.2`,
+`1.0.1-1.21.11`); use the one matching your Minestom.
 
 ```kotlin
 repositories {
     mavenCentral()
-    maven("https://maven.pkg.github.com/thoriumac/thorium-minestom-plugin") {
-        credentials {
-            username = providers.gradleProperty("gpr.user").orNull ?: System.getenv("GITHUB_ACTOR")
-            password = providers.gradleProperty("gpr.key").orNull ?: System.getenv("GITHUB_TOKEN")
-        }
-    }
+    maven("https://jitpack.io")
 }
 
 dependencies {
     implementation("net.minestom:minestom:2026.09.12-26.2")
-    implementation("ac.thorium:thorium-minestom:1.0.0-26.2")
+    implementation("com.github.ThoriumAC:Thorium-Minestom-Plugin:1.0.1-26.2")
 }
 ```
 
 The jar is shaded (its websocket and protobuf are relocated), so it brings no dependencies of its own.
 
-To release, tag the commit on the branch being released (`git tag v1.0.0-26.2 && git push --tags`);
-`.github/workflows/publish.yml` builds, tests and publishes it.
+To release, bump `version` in `build.gradle.kts`, then tag the commit on the branch being released
+(`git tag 1.0.1-26.2 && git push origin 1.0.1-26.2`). JitPack builds it the first time someone asks for it.
 
 ## Use
 
