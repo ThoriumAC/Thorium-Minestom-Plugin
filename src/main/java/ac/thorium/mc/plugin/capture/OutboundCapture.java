@@ -139,7 +139,7 @@ public final class OutboundCapture {
                 for (EntityAttributesPacket.Property pr : w.properties()) {
                     Attribute.Builder a = Attribute.newBuilder().setName(pr.attribute().key().asString()).setBase(pr.value());
                     for (net.minestom.server.entity.attribute.AttributeModifier m : pr.modifiers()) {
-                        a.addModifiers(AttributeModifier.newBuilder().setAmount(m.amount()).setOp(m.operation().ordinal()));
+                        a.addModifiers(AttributeModifier.newBuilder().setAmount(m.amount()).setOp(m.operation().ordinal()).setId(m.id().asString()));
                     }
                     b.addAttributes(a);
                 }
@@ -176,9 +176,11 @@ public final class OutboundCapture {
                     .setInvulnerable((w.flags() & 0x01) != 0).setFlying((w.flags() & 0x02) != 0).setMayFly((w.flags() & 0x04) != 0)
                     .setFlySpeed(w.flyingSpeed()).setWalkSpeed(w.walkingSpeed())));
             case ChangeGameStatePacket w -> fenced(p, Outbound.newBuilder().setGameState(GameState.newBuilder().setReason(w.reason().ordinal()).setValue(w.value())));
+            case SetTickStatePacket w -> fenced(p, Outbound.newBuilder().setTickingState(TickingState.newBuilder().setTickRate(w.tickRate()).setFrozen(w.isFrozen())));
             case RespawnPacket w -> fenced(p, Outbound.newBuilder().setRespawn(RespawnOut.newBuilder()
                     .setDimension(dimensionName(w.dimensionType()))
-                    .setGamemode(w.gameMode().ordinal()).setKeepAll((w.copyData() & 0x03) == 0x03)));
+                    .setGamemode(w.gameMode().ordinal()).setKeepAll((w.copyData() & 0x03) == 0x03)
+                    .setKeepAttributes((w.copyData() & 0x01) != 0)));
             case SetSlotPacket w -> fenced(p, Outbound.newBuilder().setSlot(ItemNames.slotOut(w.slot(), w.itemStack()).setWindow(w.windowId()).setStateId(w.stateId())));
             case SetPlayerInventorySlotPacket w -> fenced(p, Outbound.newBuilder().setSlot(ItemNames.slotOut(windowSlot(w.slot()), w.itemStack()).setWindow(0)));
             case WindowItemsPacket w -> {
