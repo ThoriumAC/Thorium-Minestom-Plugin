@@ -199,6 +199,7 @@ public final class Telemetry {
     }
 
     public void snapshotAll() {
+        gate.run("tags", () -> sendBlockTags(true));
         for (Player p : players.values()) p.scheduleNextTick(e -> gate.run("state:snapshot", () -> {
             inventorySnapshot(p);
             stateSnapshot(p);
@@ -223,6 +224,8 @@ public final class Telemetry {
                 .setInvulnerable(p.isInvulnerable() || gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR))));
         fence(p, outbound(p, Outbound.newBuilder().setHealth(Health.newBuilder()
                 .setHealth(p.getHealth()).setFood(p.getFood()).setSaturation(p.getFoodSaturation()))));
+        fence(p, outbound(p, Outbound.newBuilder().setTickingState(ac.thorium.mc.proto.TickingState.newBuilder()
+                .setTickRate(net.minestom.server.MinecraftServer.TICK_PER_SECOND))));
         for (TimedPotion t : p.getActiveEffects()) {
             fence(p, outbound(p, Outbound.newBuilder().setEntityEffect(EntityEffect.newBuilder().setId(id)
                     .setEffect(t.potion().effect().key().asString()).setAmplifier(t.potion().amplifier()).setDuration(t.potion().duration()))));
@@ -260,6 +263,18 @@ public final class Telemetry {
         players.put(p.getUuid(), p);
         byEntityId.put(p.getEntityId(), roster.get(p.getUuid()));
         p.scheduleNextTick(e -> gate.run("inventory:snapshot", () -> inventorySnapshot(p)));
+        gate.run("tags", () -> sendBlockTags(false));
+    }
+
+    private volatile int tagsHash;
+
+    // Tags are server-wide: sent on every connect, and again when a join finds
+    // them changed.
+    private void sendBlockTags(boolean force) {
+        ac.thorium.mc.proto.BlockTags t = ac.thorium.mc.plugin.capture.ServerTags.blocks();
+        if (t == null || (!force && t.hashCode() == tagsHash)) return;
+        tagsHash = t.hashCode();
+        send(UpStream.newBuilder().setBlockTags(t).build());
     }
 
     public void inventorySnapshot(Player p) {
