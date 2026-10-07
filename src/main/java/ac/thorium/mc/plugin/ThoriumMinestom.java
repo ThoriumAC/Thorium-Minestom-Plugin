@@ -79,6 +79,7 @@ public final class ThoriumMinestom {
         ThoriumMinestom t = new ThoriumMinestom(dataDir);
         MinecraftServer.getCommandManager().register(new ThoriumCommand(t));
         MinecraftServer.getCommandManager().register(new ReportCommand(() -> t.settings, () -> t.connection, () -> t.telemetry));
+        MinecraftServer.getCommandManager().register(new ac.thorium.mc.plugin.command.StatsCommand(() -> t.connection, () -> t.telemetry));
         t.enable();
         return t;
     }
@@ -144,6 +145,8 @@ public final class ThoriumMinestom {
         telemetry.setOutbound(outbound);
         mitigator = new Mitigator(compat, gate, cfg, telemetry::tick);
         activity = new ActivityEvents(settings, () -> connection, telemetry, gate);
+        final ActivityEvents a = activity;
+        ac.thorium.mc.api.ThoriumStats.bind((p, kind, key, amount) -> a.custom(p, kind, key, amount));
         worldSampler = new WorldSampler(world, gate, () -> MinecraftServer.getConnectionManager().getOnlinePlayers(), this::engineReady);
 
         // Last in the global handler, so cancellations by the server's own listeners are already settled.
@@ -177,6 +180,7 @@ public final class ThoriumMinestom {
         if (worldSampler != null) worldSampler.stop();
         if (telemetry != null) telemetry.stop();
         if (activity != null) activity.stop();
+        ac.thorium.mc.api.ThoriumStats.bind(null);
         if (node != null) MinecraftServer.getGlobalEventHandler().removeChild(node);
         node = null; activity = null; connection = null; telemetry = null; mitigator = null; tickTask = null;
         worldSampler = null; world = null;

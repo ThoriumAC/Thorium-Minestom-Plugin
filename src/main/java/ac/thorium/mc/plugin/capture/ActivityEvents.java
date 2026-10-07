@@ -13,11 +13,13 @@ import net.kyori.adventure.key.Keyed;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.component.DataComponents;
 import net.minestom.server.coordinate.Point;
+import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.Player;
 import net.minestom.server.entity.damage.Damage;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
+import net.minestom.server.event.entity.EntityDamageEvent;
 import net.minestom.server.event.entity.EntityDeathEvent;
 import net.minestom.server.event.item.ItemDropEvent;
 import net.minestom.server.event.item.PickupItemEvent;
@@ -93,7 +95,25 @@ public final class ActivityEvents {
 
     private static String type(ItemStack it) { return it == null || it.isAir() ? "" : name(it.material()); }
 
+    public void custom(Player p, String kind, String key, double amount) {
+        record(p, kind, key, "", null, p.getInstance(), p.getPosition(), amount);
+    }
+
     public void register(EventNode<Event> node) {
+        node.addListener(EntityDamageEvent.class, e -> {
+            if (e.isCancelled()) return;
+            gate.run("activity:damage", () -> {
+                Damage d = e.getDamage();
+                double hearts = d.getAmount() / 2.0;
+                if (hearts <= 0) return;
+                String cause = d.getType().key().value().toUpperCase(Locale.ROOT);
+                Entity hurt = e.getEntity();
+                Player attacker = d.getAttacker() instanceof Player ap ? ap : null;
+                Player victim = hurt instanceof Player vp ? vp : null;
+                if (victim != null) record(victim, "damage_taken", cause, "", attacker, hurt.getInstance(), hurt.getPosition(), hearts);
+                if (attacker != null && attacker != victim) record(attacker, "damage_dealt", name(hurt.getEntityType()), cause, victim, hurt.getInstance(), hurt.getPosition(), hearts);
+            });
+        });
         node.addListener(PlayerBlockBreakEvent.class, e -> {
             if (e.isCancelled()) return;
             gate.run("activity:break", () -> record(e.getPlayer(), "block_break", name(e.getBlock()), type(e.getPlayer().getItemInMainHand()), null, e.getInstance(), e.getBlockPosition(), 1));
