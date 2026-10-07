@@ -40,7 +40,7 @@ public final class PlayerEvents {
             Player p = e.getPlayer();
             if (e.isFirstSpawn()) {
                 telemetry.track(p);
-                telemetry.event(p, EventFactory.join(ip(p), ServerCompat.protocol(p), "", p.getGameMode().ordinal(), p.getEntityId()));
+                telemetry.event(p, EventFactory.join(ip(p), ServerCompat.protocol(p), "", p.getGameMode().ordinal(), p.getEntityId(), SkinTexture.of(p)));
             } else {
                 telemetry.event(p, EventFactory.world(MetaBuilder.dimension(e.getInstance())));
             }
