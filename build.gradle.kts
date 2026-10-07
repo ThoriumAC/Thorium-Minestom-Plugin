@@ -12,7 +12,7 @@ val minestomVersion = "2026.05.17-1.21.11"
 
 group = "ac.thorium"
 // Suffixed with the Minecraft version, as Minestom's own versions are, so each branch publishes its own line.
-version = "1.0.5-" + minestomVersion.substringAfter('-')
+version = "1.0.6-" + minestomVersion.substringAfter('-')
 
 repositories {
     mavenCentral()
