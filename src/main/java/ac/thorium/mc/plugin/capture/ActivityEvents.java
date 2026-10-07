@@ -104,10 +104,10 @@ public final class ActivityEvents {
             if (e.isCancelled()) return;
             gate.run("activity:damage", () -> {
                 Damage d = e.getDamage();
-                double hearts = d.getAmount() / 2.0;
+                Entity hurt = e.getEntity();
+                double hearts = DamageCap.hearts(d.getAmount(), hurt instanceof LivingEntity le ? le.getHealth() : -1);
                 if (hearts <= 0) return;
                 String cause = d.getType().key().value().toUpperCase(Locale.ROOT);
-                Entity hurt = e.getEntity();
                 Player attacker = d.getAttacker() instanceof Player ap ? ap : null;
                 Player victim = hurt instanceof Player vp ? vp : null;
                 if (victim != null) record(victim, "damage_taken", cause, "", attacker, hurt.getInstance(), hurt.getPosition(), hearts);
