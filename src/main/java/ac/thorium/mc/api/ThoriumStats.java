@@ -7,11 +7,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
-/**
- * Custom stats for the network's public Thorium stats site. Keys are lower-case letters,
- * digits and underscores, 1 to 32 long. Calls are cheap, never throw, and are dropped
- * while the network has Advanced Analytics off.
- */
 public final class ThoriumStats {
     public interface Recorder { void record(Player player, String kind, String key, double amount); }
 
@@ -25,10 +20,8 @@ public final class ThoriumStats {
 
     public static boolean validKey(String key) { return key != null && KEY.matcher(key).matches(); }
 
-    /** Adds amount to the player's running total for key. */
     public static void increment(Player player, String key, double amount) { emit(player, "custom", key, amount); }
 
-    /** Records value as a candidate best score for key; the site shows the highest. */
     public static void max(Player player, String key, double value) { emit(player, "custom_max", key, value); }
 
     private static void emit(Player player, String kind, String key, double amount) {

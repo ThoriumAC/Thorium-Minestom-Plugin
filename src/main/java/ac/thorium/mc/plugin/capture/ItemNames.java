@@ -45,9 +45,6 @@ public final class ItemNames {
         return patch == null ? b : b.setPatch(patch);
     }
 
-    // The stack's component patch as it goes to the client (what differs from
-    // the material's prototype), for the components that change movement or
-    // mining; null when it touches none of them.
     static ItemPatch patch(ItemStack it) {
         try {
             return patch0(it);
@@ -97,7 +94,6 @@ public final class ItemNames {
         return out.equals(ItemPatch.getDefaultInstance()) ? null : out;
     }
 
-    // 0 as the prototype has it, 1 set to something else, 2 removed.
     private static int state(ItemStack it, DataComponentMap proto, DataComponent<?> c) {
         Object v = it.get(c);
         if (Objects.equals(v, proto.get(c))) return 0;

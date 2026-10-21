@@ -5,7 +5,6 @@ package thorium.mc.v1;
 option java_package = "ac.thorium.mc.proto";
 option java_multiple_files = true;
 
-// A Minecraft player identity. uuid is the 16 raw bytes of the Mojang/offline UUID.
 message PlayerRef {
   bytes uuid = 1;
   string username = 2;
@@ -33,14 +32,12 @@ enum ServerSoftware {
   SERVER_SOFTWARE_MINESTOM = 6;
 }
 
-// Server-side truth attached to every sample. The cloud cannot infer these from
-// packets; they drive exemptions and latency compensation.
 message ServerMeta {
-  int32 gamemode = 1;          // 0 survival, 1 creative, 2 adventure, 3 spectator
+  int32 gamemode = 1;
   string dimension = 2;
   int32 ping_ms = 3;
   double tps = 4;
-  bool server_moved = 5;       // first sample after teleport/velocity/knockback
+  bool server_moved = 5;
 
   bool in_vehicle = 10;
   bool gliding = 11;
@@ -56,7 +53,7 @@ message ServerMeta {
   bool block_above_solid = 21;
   bool levitation = 22;
   bool slow_falling = 23;
-  int32 speed_amplifier = 24;  // 0 = none, 1 = Speed I, ...
+  int32 speed_amplifier = 24;
   int32 jump_amplifier = 25;
   bool flying_allowed = 26;
   bool is_flying = 27;
@@ -64,30 +61,14 @@ message ServerMeta {
   bool frost_walker = 29;
   bool dead = 30;
   bool sleeping = 31;
-  bool block_below_liquid = 32;  // water/lava directly under the feet (walking on liquid = Jesus)
-  bool near_wall = 33;           // a solid block within reach of the hitbox at feet or head height (movement may be clipped)
-  bool pushable_nearby = 34;     // a living entity or vehicle close enough to push the player client-side
+  bool block_below_liquid = 32;
+  bool near_wall = 33;
+  bool pushable_nearby = 34;
 
-  // The Bukkit world name, which is what the block mirror keys sections by.
-  // `dimension` is the environment (overworld/nether/end) and several worlds can
-  // share one, so it cannot address the mirror on its own.
   string world = 35;
 
-  // What the player is riding, lower-cased ("boat", "minecart", "horse"),
-  // empty when they are not riding anything.
-  //
-  // in_vehicle alone is not enough to judge a vehicle by. A minecart climbs
-  // legitimately, every tick, for as long as the rail goes up; a boat in the
-  // air cannot climb at all. Without the type, a check has to treat every
-  // vehicle like a minecart and catch nothing.
   string vehicle_type = 36;
 
-  // The player's own entity id. The join event carries it too, but a stream
-  // that begins after the join (the engine reconnecting, a capture started
-  // mid-session) never sees that event, and without it every packet about
-  // the player is filed under some other entity.
   int32 entity_id = 37;
-  // The client's protocol, for the same reason: the join event that carries
-  // it is gone by the time a reconnected engine starts listening.
   int32 protocol_version = 38;
 }

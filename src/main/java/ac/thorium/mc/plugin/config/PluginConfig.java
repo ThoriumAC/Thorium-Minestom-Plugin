@@ -11,10 +11,7 @@ public final class PluginConfig {
     public final boolean mitigate;
     public final String banCommand;
     public final String unbanCommand;
-    public final boolean sendIp;
     public final String alertFormat;
-    public final String warnFormat;
-    public final String kickFormat;
     public final String devSessionToken;
     public final int entityRadius;
 
@@ -29,10 +26,7 @@ public final class PluginConfig {
         this.mitigate = bool(c, "mitigate", true);
         this.banCommand = str(c, "ban-command", "");
         this.unbanCommand = str(c, "unban-command", "");
-        this.sendIp = bool(c, "send-ip", false);
         this.alertFormat = c.getProperty("alert-format", "&8[&cThorium&8] &f%player% &7failed &e%check% &7(VL %vl%, %confidence%%)");
-        this.warnFormat = c.getProperty("warn-format", "&c[Thorium] &fSuspicious activity detected (%check%). This is a warning.");
-        this.kickFormat = c.getProperty("kick-format", "&cKicked by Thorium anti-cheat\n&7%reason%");
         this.devSessionToken = str(c, "dev.session-token", "");
         this.entityRadius = Math.max(4, Math.min(32, num(c, "entity-radius", 12)));
     }

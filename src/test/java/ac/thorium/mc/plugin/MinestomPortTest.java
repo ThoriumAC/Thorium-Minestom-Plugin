@@ -57,12 +57,12 @@ class MinestomPortTest {
     @Test
     void configParsesPropertiesAndClamps() throws Exception {
         Properties p = new Properties();
-        p.load(new StringReader("server-token=org_x\nflush-interval-ms=5\ngateway-url=https://g.example/\nkick-format=a\\nb\n"));
+        p.load(new StringReader("server-token=org_x\nflush-interval-ms=5\ngateway-url=https://g.example/\nalert-format=a\\nb\n"));
         PluginConfig c = PluginConfig.from(p);
         assertTrue(c.needsServerName());
         assertEquals(25, c.flushIntervalMs);
         assertEquals("https://g.example", c.gatewayUrl);
-        assertEquals("a\nb", c.kickFormat);
+        assertEquals("a\nb", c.alertFormat);
         assertTrue(c.enforce);
     }
 

@@ -14,6 +14,7 @@ import net.minestom.server.command.builder.arguments.ArgumentWord;
 import net.minestom.server.command.builder.suggestion.SuggestionEntry;
 import net.minestom.server.entity.Player;
 
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import static ac.thorium.mc.plugin.command.ThoriumCommand.send;
@@ -23,8 +24,9 @@ public final class ReportCommand extends Command {
     private final Supplier<EngineConnection> connection;
     private final Supplier<Telemetry> telemetry;
 
-    public ReportCommand(Supplier<NetworkSettings> settings, Supplier<EngineConnection> connection, Supplier<Telemetry> telemetry) {
+    public ReportCommand(Predicate<CommandSender> allowed, Supplier<NetworkSettings> settings, Supplier<EngineConnection> connection, Supplier<Telemetry> telemetry) {
         super("report");
+        setCondition((sender, input) -> allowed.test(sender));
         this.settings = settings; this.connection = connection; this.telemetry = telemetry;
         ArgumentWord target = ArgumentType.Word("player");
         target.setSuggestionCallback((sender, ctx, suggestion) -> {

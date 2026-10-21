@@ -6,7 +6,6 @@ import net.minestom.server.instance.block.Block;
 import net.minestom.server.registry.RegistryKey;
 import net.minestom.server.registry.RegistryTag;
 
-// The block tags Minestom sends every client, as the server has them.
 public final class ServerTags {
     private ServerTags() {}
 

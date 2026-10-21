@@ -6,9 +6,11 @@ import ac.thorium.mc.plugin.capture.OutboundCapture;
 import ac.thorium.mc.plugin.capture.PacketCapture;
 import ac.thorium.mc.plugin.capture.PlayerEvents;
 import ac.thorium.mc.plugin.command.ReportCommand;
+import ac.thorium.mc.plugin.command.StatsCommand;
 import ac.thorium.mc.plugin.command.ThoriumCommand;
 import ac.thorium.mc.plugin.compat.ErrorGate;
 import ac.thorium.mc.plugin.compat.ServerCompat;
+import ac.thorium.mc.plugin.config.ConfigFile;
 import ac.thorium.mc.plugin.config.NetworkSettings;
 import ac.thorium.mc.plugin.config.PluginConfig;
 import ac.thorium.mc.plugin.enforce.Enforcer;
@@ -41,21 +43,23 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
-import java.util.function.Predicate;
+import java.util.function.BiPredicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** Thorium for Minestom. Call {@link #start(Path)} after {@code MinecraftServer.init()}. */
 public final class ThoriumMinestom {
-    public static final String VERSION = "1.0.1";
+    public static final String VERSION = "1.1.0";
+    public static final String REPORT = "thorium.report", ALERTS = "thorium.alerts", ADMIN = "thorium.admin";
+    public static final Path CONFIG_FILE = Path.of("config", "thorium.properties");
 
     private final Path dataDir;
     private final Logger log = Logger.getLogger("Thorium");
     private final ErrorGate gate = new ErrorGate(log, 60_000, System::currentTimeMillis);
     private final ServerCompat compat = new ServerCompat();
-    private final StaffAlerts alerts = new StaffAlerts();
+    private final StaffAlerts alerts = new StaffAlerts(p -> hasPermission(p, ALERTS));
     private final EntityTracker entityTracker;
-    private volatile Predicate<Player> admin = p -> p.getPermissionLevel() >= 4;
+    private volatile BiPredicate<Player, String> permissions = ThoriumMinestom::defaultPermission;
     private PluginConfig cfg;
 
     private EventNode<Event> node;
@@ -78,34 +82,39 @@ public final class ThoriumMinestom {
     public static ThoriumMinestom start(Path dataDir) throws IOException {
         ThoriumMinestom t = new ThoriumMinestom(dataDir);
         MinecraftServer.getCommandManager().register(new ThoriumCommand(t));
-        MinecraftServer.getCommandManager().register(new ReportCommand(() -> t.settings, () -> t.connection, () -> t.telemetry));
-        MinecraftServer.getCommandManager().register(new ac.thorium.mc.plugin.command.StatsCommand(() -> t.connection, () -> t.telemetry));
+        MinecraftServer.getCommandManager().register(new ReportCommand(s -> t.hasPermission(s, REPORT), () -> t.settings, () -> t.connection, () -> t.telemetry));
+        MinecraftServer.getCommandManager().register(new StatsCommand(() -> t.connection, () -> t.telemetry));
         t.enable();
         return t;
     }
 
-    /** Who receives alerts and may use /thorium alerts. Default: permission level 2+. */
-    public ThoriumMinestom staff(Predicate<Player> staff) { alerts.staff(staff); return this; }
+    public ThoriumMinestom permissions(BiPredicate<Player, String> permissions) { this.permissions = permissions; return this; }
 
-    /** Who may use the admin subcommands. The console always may. Default: permission level 4. */
-    public ThoriumMinestom admin(Predicate<Player> admin) { this.admin = admin; return this; }
+    public boolean hasPermission(CommandSender s, String node) { return s instanceof ConsoleSender || s instanceof Player p && permissions.test(p, node); }
 
-    public boolean isAdmin(CommandSender s) { return s instanceof ConsoleSender || s instanceof Player p && admin.test(p); }
+    static boolean defaultPermission(Player p, String node) {
+        return switch (node) {
+            case REPORT -> true;
+            case ALERTS -> p.getPermissionLevel() >= 2;
+            case ADMIN -> p.getPermissionLevel() >= 4;
+            default -> false;
+        };
+    }
 
     private PluginConfig loadConfig() throws IOException {
-        Path file = dataDir.resolve("thorium.properties");
-        if (Files.notExists(file)) {
-            Files.createDirectories(dataDir);
-            try (InputStream in = ThoriumMinestom.class.getResourceAsStream("/thorium.properties")) { Files.copy(in, file); }
+        ConfigFile.migrate(dataDir.resolve("thorium.properties"), CONFIG_FILE, log);
+        if (Files.notExists(CONFIG_FILE)) {
+            Files.createDirectories(CONFIG_FILE.getParent());
+            try (InputStream in = ThoriumMinestom.class.getResourceAsStream("/thorium.properties")) { Files.copy(in, CONFIG_FILE); }
         }
         Properties p = new Properties();
-        try (Reader r = Files.newBufferedReader(file, StandardCharsets.UTF_8)) { p.load(r); }
+        try (Reader r = Files.newBufferedReader(CONFIG_FILE, StandardCharsets.UTF_8)) { p.load(r); }
         return PluginConfig.from(p);
     }
 
     private void enable() {
         if (!cfg.isConfigured()) {
-            log.severe("Thorium: server-token is empty in " + dataDir.resolve("thorium.properties") + " - idle until configured (/thorium reconnect after editing).");
+            log.severe("Thorium: not configured. Run /thorium setup <code> with a code from the dashboard, or fill in " + CONFIG_FILE + " and run /thorium reconnect.");
             return;
         }
         if (cfg.needsServerName()) {
@@ -131,8 +140,8 @@ public final class ThoriumMinestom {
     }
 
     private void startPipeline() {
-        SampleBuffer buffer = new SampleBuffer(400);
-        settings = new NetworkSettings(cfg.sendIp);
+        SampleBuffer buffer = new SampleBuffer(2048);
+        settings = new NetworkSettings();
         enforcer = new Enforcer(gate, alerts, cfg, settings, log);
         world = new WorldMirror();
         ConnectionConfig ccfg = new ConnectionConfig(cfg.gatewayUrl, cfg.devSessionToken, VERSION);
@@ -145,8 +154,6 @@ public final class ThoriumMinestom {
         telemetry.setOutbound(outbound);
         mitigator = new Mitigator(compat, gate, cfg, telemetry::tick);
         activity = new ActivityEvents(settings, () -> connection, telemetry, gate);
-        final ActivityEvents a = activity;
-        ac.thorium.mc.api.ThoriumStats.bind((p, kind, key, amount) -> a.custom(p, kind, key, amount));
         worldSampler = new WorldSampler(world, gate, () -> MinecraftServer.getConnectionManager().getOnlinePlayers(), this::engineReady);
 
         // Last in the global handler, so cancellations by the server's own listeners are already settled.
@@ -162,6 +169,8 @@ public final class ThoriumMinestom {
         MinecraftServer.getGlobalEventHandler().addChild(node);
 
         activity.start();
+        ActivityEvents a = activity;
+        ac.thorium.mc.api.ThoriumStats.bind(a::custom);
         worldSampler.start();
         for (Player p : MinecraftServer.getConnectionManager().getOnlinePlayers()) telemetry.track(p);
         telemetry.start();
@@ -179,8 +188,8 @@ public final class ThoriumMinestom {
         if (connection != null) connection.stop();
         if (worldSampler != null) worldSampler.stop();
         if (telemetry != null) telemetry.stop();
-        if (activity != null) activity.stop();
         ac.thorium.mc.api.ThoriumStats.bind(null);
+        if (activity != null) activity.stop();
         if (node != null) MinecraftServer.getGlobalEventHandler().removeChild(node);
         node = null; activity = null; connection = null; telemetry = null; mitigator = null; tickTask = null;
         worldSampler = null; world = null;

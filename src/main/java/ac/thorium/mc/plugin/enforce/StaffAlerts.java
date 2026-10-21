@@ -10,12 +10,11 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
-/** Minestom has no permissions, so who counts as staff is the server's call (default: permission level 2+). */
 public final class StaffAlerts {
     private final Set<UUID> muted = ConcurrentHashMap.newKeySet();
-    private volatile Predicate<Player> staff = p -> p.getPermissionLevel() >= 2;
+    private final Predicate<Player> staff;
 
-    public void staff(Predicate<Player> staff) { this.staff = staff; }
+    public StaffAlerts(Predicate<Player> staff) { this.staff = staff; }
     public boolean isStaff(Player p) { return staff.test(p); }
 
     public boolean toggle(UUID id) { if (muted.remove(id)) return true; muted.add(id); return false; }
