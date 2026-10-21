@@ -6,6 +6,7 @@ import ac.thorium.mc.plugin.capture.OutboundCapture;
 import ac.thorium.mc.plugin.capture.PacketCapture;
 import ac.thorium.mc.plugin.capture.PlayerEvents;
 import ac.thorium.mc.plugin.command.ReportCommand;
+import ac.thorium.mc.plugin.command.StatsCommand;
 import ac.thorium.mc.plugin.command.ThoriumCommand;
 import ac.thorium.mc.plugin.compat.ErrorGate;
 import ac.thorium.mc.plugin.compat.ServerCompat;
@@ -82,6 +83,7 @@ public final class ThoriumMinestom {
         ThoriumMinestom t = new ThoriumMinestom(dataDir);
         MinecraftServer.getCommandManager().register(new ThoriumCommand(t));
         MinecraftServer.getCommandManager().register(new ReportCommand(s -> t.hasPermission(s, REPORT), () -> t.settings, () -> t.connection, () -> t.telemetry));
+        MinecraftServer.getCommandManager().register(new StatsCommand(() -> t.connection, () -> t.telemetry));
         t.enable();
         return t;
     }
