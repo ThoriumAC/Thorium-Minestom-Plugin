@@ -18,7 +18,9 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.entity.damage.Damage;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
+import net.minestom.server.event.entity.EntityDamageEvent;
 import net.minestom.server.event.entity.EntityDeathEvent;
+import net.minestom.server.event.entity.EntityShootEvent;
 import net.minestom.server.event.item.ItemDropEvent;
 import net.minestom.server.event.item.PickupItemEvent;
 import net.minestom.server.event.item.PlayerFinishItemUseEvent;
@@ -93,7 +95,24 @@ public final class ActivityEvents {
 
     private static String type(ItemStack it) { return it == null || it.isAir() ? "" : name(it.material()); }
 
+    public void custom(Player p, String kind, String key, double amount) {
+        record(p, kind, key, "", null, p.getInstance(), p.getPosition(), amount);
+    }
+
     public void register(EventNode<Event> node) {
+        node.addListener(EntityDamageEvent.class, e -> {
+            if (e.isCancelled() || !(e.getEntity() instanceof LivingEntity hurt)) return;
+            gate.run("activity:damage", () -> {
+                Damage d = e.getDamage();
+                double hearts = DamageCap.hearts(d.getAmount(), hurt.getHealth());
+                if (hearts <= 0) return;
+                String cause = d.getType().key().value().toUpperCase(Locale.ROOT);
+                Player attacker = d.getAttacker() instanceof Player a ? a : null;
+                Player victim = hurt instanceof Player v ? v : null;
+                if (victim != null) record(victim, "damage_taken", cause, "", attacker, hurt.getInstance(), hurt.getPosition(), hearts);
+                if (attacker != null && attacker != victim) record(attacker, "damage_dealt", name(hurt.getEntityType()), cause, victim, hurt.getInstance(), hurt.getPosition(), hearts);
+            });
+        });
         node.addListener(PlayerBlockBreakEvent.class, e -> {
             if (e.isCancelled()) return;
             gate.run("activity:break", () -> record(e.getPlayer(), "block_break", name(e.getBlock()), type(e.getPlayer().getItemInMainHand()), null, e.getInstance(), e.getBlockPosition(), 1));
@@ -118,6 +137,10 @@ public final class ActivityEvents {
         node.addListener(PlayerUseItemEvent.class, e -> {
             if (e.isCancelled() || e.getItemStack().isAir()) return;
             gate.run("activity:use", () -> record(e.getPlayer(), "item_use", type(e.getItemStack()), "", null, e.getPlayer().getInstance(), e.getPlayer().getPosition(), 1));
+        });
+        node.addListener(EntityShootEvent.class, e -> {
+            if (e.isCancelled() || !(e.getEntity() instanceof Player p)) return;
+            gate.run("activity:projectile", () -> record(p, "projectile", name(e.getProjectile().getEntityType()), "", null, p.getInstance(), p.getPosition(), 1));
         });
         node.addListener(ItemDropEvent.class, e -> {
             if (e.isCancelled()) return;

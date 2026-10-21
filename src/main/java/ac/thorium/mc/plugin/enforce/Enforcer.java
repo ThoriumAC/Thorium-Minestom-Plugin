@@ -61,9 +61,8 @@ public final class Enforcer implements Consumer<Verdict> {
         Player p = target;
         p.scheduleNextTick(e -> gate.run("enforce:player", () -> {
             switch (o) {
-                case WARN_PLAYER -> p.sendMessage(MessageFormat.format(cfg.warnFormat, v));
-                case KICK -> p.kick(MessageFormat.format(settings.kickMessage(cfg.kickFormat), v));
-                case BAN_BUKKIT -> p.kick(MessageFormat.format(settings.banMessage(settings.kickMessage(cfg.kickFormat)), v));
+                case KICK -> p.kick(MessageFormat.format(settings.kickMessage(), v));
+                case BAN_BUKKIT -> p.kick(MessageFormat.format(settings.banMessage(settings.kickMessage()), v));
                 default -> { }
             }
         }));

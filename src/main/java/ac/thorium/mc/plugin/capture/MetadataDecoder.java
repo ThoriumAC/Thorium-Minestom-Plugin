@@ -9,7 +9,7 @@ import java.util.Map;
 public final class MetadataDecoder {
     private MetadataDecoder() {}
 
-    private static final int IDX_FLAGS = 0, IDX_POSE = 6, IDX_BABY = 16, IDX_PEEK = 17;
+    private static final int IDX_FLAGS = 0, IDX_POSE = 6, IDX_BABY = 16, IDX_PEEK = 17, IDX_LIVING = 8;
 
     public static EntityMetadata.Builder decode(int id, Map<Integer, Metadata.Entry<?>> data) {
         if (data == null || data.isEmpty()) return null;
@@ -30,6 +30,8 @@ public final class MetadataDecoder {
                 b.setHasBaby(true).setBaby(baby);
             } else if (idx == IDX_PEEK && v instanceof Byte peek) {
                 b.setHasPeek(true).setPeek(peek);
+            } else if (idx == IDX_LIVING && v instanceof Byte f) {
+                b.setHasUsing(true).setUsing((f & 0x01) != 0);
             } else continue;
             any = true;
         }

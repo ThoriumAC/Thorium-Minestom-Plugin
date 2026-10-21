@@ -1,18 +1,22 @@
 package ac.thorium.mc.plugin.command;
 
 import ac.thorium.mc.plugin.ThoriumMinestom;
+import ac.thorium.mc.plugin.config.ConfigFile;
 import ac.thorium.mc.plugin.telemetry.CaptureWriter;
+import ac.thorium.mc.plugin.transport.SessionAuth;
 import ac.thorium.mc.plugin.world.WorldMirror;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.builder.Command;
 import net.minestom.server.command.builder.arguments.ArgumentStringArray;
 import net.minestom.server.command.builder.arguments.ArgumentType;
+import net.minestom.server.command.builder.suggestion.SuggestionEntry;
 import net.minestom.server.entity.Player;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -23,17 +27,35 @@ public final class ThoriumCommand extends Command {
         super("thorium");
         this.thorium = thorium;
         ArgumentStringArray args = ArgumentType.StringArray("args");
+        setCondition((sender, input) -> thorium.hasPermission(sender, ThoriumMinestom.ADMIN) || thorium.hasPermission(sender, ThoriumMinestom.ALERTS));
+        args.setSuggestionCallback((sender, ctx, suggestion) -> {
+            String raw = ctx.getRaw(args);
+            if (raw != null && raw.contains(" ")) return;
+            for (String s : complete(raw == null ? "" : raw, thorium.hasPermission(sender, ThoriumMinestom.ADMIN), thorium.hasPermission(sender, ThoriumMinestom.ALERTS))) {
+                suggestion.addEntry(new SuggestionEntry(s));
+            }
+        });
         setDefaultExecutor((sender, ctx) -> run(sender, new String[0]));
         addSyntax((sender, ctx) -> run(sender, ctx.get(args)), args);
     }
 
     static void send(CommandSender to, String legacy) { to.sendMessage(LegacyComponentSerializer.legacySection().deserialize(legacy)); }
 
+    public static List<String> complete(String partial, boolean admin, boolean alerts) {
+        List<String> out = new ArrayList<>();
+        if (alerts) out.add("alerts");
+        if (admin) { out.add("capture"); out.add("compat"); out.add("reconnect"); out.add("setup"); out.add("status"); }
+        List<String> filtered = new ArrayList<>();
+        for (String s : out) if (s.startsWith(partial.toLowerCase(Locale.ROOT))) filtered.add(s);
+        Collections.sort(filtered);
+        return filtered;
+    }
+
     public static List<String> statusLines(String version, String mcVersion, boolean configured, String connectionLine, String telemetryLine, boolean enforce) {
         List<String> l = new ArrayList<>();
         l.add("§8[§cThorium§8] §fminestom " + version);
         l.add("§7server: §fMinestom " + mcVersion);
-        l.add(configured ? "§7connection: §f" + connectionLine : "§cnot configured §7(set server-token in thorium.properties)");
+        l.add(configured ? "§7connection: §f" + connectionLine : "§cnot configured §7(run /thorium setup <code> or edit config/thorium.properties)");
         if (configured) l.add("§7telemetry: §f" + telemetryLine);
         l.add("§7enforce: §f" + (enforce ? "on" : "off"));
         return l;
@@ -51,7 +73,7 @@ public final class ThoriumCommand extends Command {
 
     private void run(CommandSender sender, String[] args) {
         String sub = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
-        boolean admin = thorium.isAdmin(sender);
+        boolean admin = thorium.hasPermission(sender, ThoriumMinestom.ADMIN);
         switch (sub) {
             case "status" -> {
                 if (!admin) { send(sender, "§cNo permission."); return; }
@@ -67,7 +89,7 @@ public final class ThoriumCommand extends Command {
             }
             case "alerts" -> {
                 if (!(sender instanceof Player p)) { send(sender, "Players only."); return; }
-                if (!thorium.staffAlerts().isStaff(p)) { send(sender, "§cNo permission."); return; }
+                if (!thorium.hasPermission(p, ThoriumMinestom.ALERTS)) { send(sender, "§cNo permission."); return; }
                 boolean on = thorium.staffAlerts().toggle(p.getUuid());
                 send(sender, on ? "§aThorium alerts enabled." : "§7Thorium alerts disabled.");
             }
@@ -91,12 +113,28 @@ public final class ThoriumCommand extends Command {
                 try { thorium.telemetry().startCapture(owner, f); send(sender, "§aCapturing to " + f.getName() + ". Run /thorium capture stop when done."); }
                 catch (IOException e) { send(sender, "§cCould not open " + f + ": " + e.getMessage()); }
             }
+            case "setup" -> {
+                if (!admin) { send(sender, "§cNo permission."); return; }
+                if (args.length != 2) { send(sender, "§7Usage: /thorium setup <code> §8(make a code in the dashboard under Servers)"); return; }
+                String code = args[1], gateway = thorium.config().gatewayUrl;
+                send(sender, "§7Thorium: redeeming setup code…");
+                Thread.ofVirtual().name("thorium-setup").start(() -> {
+                    try {
+                        String[] r = SessionAuth.redeem(gateway, code, 10_000);
+                        ConfigFile.writeCredentials(ThoriumMinestom.CONFIG_FILE, r[0], r[1], false);
+                        send(sender, "§aThorium set up as §f" + r[1] + "§a. Connecting…");
+                        thorium.reconnect();
+                    } catch (IOException e) {
+                        send(sender, "§cThorium setup failed: " + e.getMessage());
+                    }
+                });
+            }
             case "reconnect" -> {
                 if (!admin) { send(sender, "§cNo permission."); return; }
                 thorium.reconnect();
                 send(sender, "§7Thorium: reconnecting…");
             }
-            default -> send(sender, "§7Usage: /thorium <status|compat|alerts|reconnect|capture <label>|capture stop>");
+            default -> send(sender, "§7Usage: /thorium <status|compat|alerts|reconnect|setup <code>|capture <label>|capture stop>");
         }
     }
 }

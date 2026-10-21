@@ -17,6 +17,7 @@ import net.minestom.server.event.inventory.InventoryClickEvent;
 import net.minestom.server.event.inventory.InventoryCloseEvent;
 import net.minestom.server.event.item.PlayerFinishItemUseEvent;
 import net.minestom.server.event.player.*;
+import net.minestom.server.item.Material;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -40,7 +41,7 @@ public final class PlayerEvents {
             Player p = e.getPlayer();
             if (e.isFirstSpawn()) {
                 telemetry.track(p);
-                telemetry.event(p, EventFactory.join(ip(p), ServerCompat.protocol(p), "", p.getGameMode().ordinal(), p.getEntityId()));
+                telemetry.event(p, EventFactory.join(ip(p), ServerCompat.protocol(p), "", p.getGameMode().ordinal(), p.getEntityId(), SkinTexture.of(p)));
             } else {
                 telemetry.event(p, EventFactory.world(MetaBuilder.dimension(e.getInstance())));
             }
@@ -76,6 +77,10 @@ public final class PlayerEvents {
         node.addListener(PlayerFinishItemUseEvent.class, e -> {
             if (!e.isRiptideSpinAttack()) return;
             gate.run("event:riptide", () -> telemetry.event(e.getPlayer(), EventFactory.boost("riptide")));
+        });
+        node.addListener(PlayerUseItemEvent.class, e -> {
+            if (e.isCancelled() || e.getItemStack().material() != Material.FIREWORK_ROCKET || !e.getPlayer().isFlyingWithElytra()) return;
+            gate.run("event:boost", () -> telemetry.event(e.getPlayer(), EventFactory.boost("firework")));
         });
         node.addListener(PlayerRespawnEvent.class, e -> gate.run("event:respawn", () -> telemetry.event(e.getPlayer(), EventFactory.respawn())));
     }

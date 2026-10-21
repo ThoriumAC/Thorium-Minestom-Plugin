@@ -14,6 +14,7 @@ import ac.thorium.mc.plugin.world.WorldSampler;
 import net.minestom.server.entity.EntityPose;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
+import net.minestom.server.entity.attribute.AttributeInstance;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.network.packet.server.common.PingPacket;
@@ -183,7 +184,16 @@ public final class Telemetry {
         }
     }
 
+    private void refreshAttributes() {
+        for (Player p : players.values()) p.scheduleNextTick(e -> gate.run("state:attributes", () -> {
+            if (!p.isOnline() || !roster.containsKey(p.getUuid())) return;
+            EntityAttributes attrs = attributesOf(p);
+            if (attrs != null) fence(p, outbound(p, Outbound.newBuilder().setEntityAttributes(attrs)));
+        }));
+    }
+
     private void heartbeat() {
+        refreshAttributes();
         send(UpStream.newBuilder().setHeartbeat(Heartbeat.newBuilder().setClientTimeMs(System.currentTimeMillis())
                 .setOnlinePlayers(roster.size()).setTps(compat.tps()).setMspt(compat.mspt())).build());
     }
@@ -199,12 +209,25 @@ public final class Telemetry {
     }
 
     public void snapshotAll() {
+        gate.run("tags", () -> sendBlockTags(true));
         for (Player p : players.values()) p.scheduleNextTick(e -> gate.run("state:snapshot", () -> {
             inventorySnapshot(p);
             stateSnapshot(p);
             OutboundCapture o = outbound;
             if (o != null && roster.containsKey(p.getUuid())) o.restate(p);
         }));
+    }
+
+    static EntityAttributes attributesOf(Player p) {
+        EntityAttributes.Builder b = EntityAttributes.newBuilder().setId(p.getEntityId());
+        for (AttributeInstance inst : p.getAttributes()) {
+            Attribute.Builder a = Attribute.newBuilder().setName(inst.attribute().key().asString()).setBase(inst.getBaseValue());
+            for (net.minestom.server.entity.attribute.AttributeModifier m : inst.getModifiers()) {
+                a.addModifiers(AttributeModifier.newBuilder().setAmount(m.amount()).setOp(m.operation().ordinal()).setId(m.id().asString()));
+            }
+            b.addAttributes(a);
+        }
+        return b.getAttributesCount() == 0 ? null : b.build();
     }
 
     public static EntityMetadata.Builder flagsOf(Player e) {
@@ -217,12 +240,16 @@ public final class Telemetry {
         if (!p.isOnline() || !roster.containsKey(p.getUuid())) return;
         int id = p.getEntityId();
         fence(p, outbound(p, Outbound.newBuilder().setEntityMetadata(flagsOf(p))));
+        EntityAttributes attrs = attributesOf(p);
+        if (attrs != null) fence(p, outbound(p, Outbound.newBuilder().setEntityAttributes(attrs)));
         GameMode gm = p.getGameMode();
         fence(p, outbound(p, Outbound.newBuilder().setPlayerAbilities(PlayerAbilities.newBuilder().setMayFly(p.isAllowFlying())
                 .setFlying(p.isFlying()).setFlySpeed(p.getFlyingSpeed()).setWalkSpeed(p.getFieldViewModifier())
                 .setInvulnerable(p.isInvulnerable() || gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR))));
         fence(p, outbound(p, Outbound.newBuilder().setHealth(Health.newBuilder()
                 .setHealth(p.getHealth()).setFood(p.getFood()).setSaturation(p.getFoodSaturation()))));
+        fence(p, outbound(p, Outbound.newBuilder().setTickingState(ac.thorium.mc.proto.TickingState.newBuilder()
+                .setTickRate(net.minestom.server.MinecraftServer.TICK_PER_SECOND))));
         for (TimedPotion t : p.getActiveEffects()) {
             fence(p, outbound(p, Outbound.newBuilder().setEntityEffect(EntityEffect.newBuilder().setId(id)
                     .setEffect(t.potion().effect().key().asString()).setAmplifier(t.potion().amplifier()).setDuration(t.potion().duration()))));
@@ -260,6 +287,16 @@ public final class Telemetry {
         players.put(p.getUuid(), p);
         byEntityId.put(p.getEntityId(), roster.get(p.getUuid()));
         p.scheduleNextTick(e -> gate.run("inventory:snapshot", () -> inventorySnapshot(p)));
+        gate.run("tags", () -> sendBlockTags(false));
+    }
+
+    private volatile int tagsHash;
+
+    private void sendBlockTags(boolean force) {
+        ac.thorium.mc.proto.BlockTags t = ac.thorium.mc.plugin.capture.ServerTags.blocks();
+        if (t == null || (!force && t.hashCode() == tagsHash)) return;
+        tagsHash = t.hashCode();
+        send(UpStream.newBuilder().setBlockTags(t).build());
     }
 
     public void inventorySnapshot(Player p) {
